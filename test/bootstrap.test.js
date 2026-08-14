@@ -12,6 +12,7 @@ test('bootstrap creates upload-compatible normalized state', async () => {
     return { ok: true, status: 200, json: async () => ({ recenttracks: {
       '@attr': { totalPages: '1' },
       track: [
+        { '@attr': { nowplaying: 'true' }, artist: { '#text': 'Current' }, name: 'Playing', album: { '#text': '' } },
         { date: { uts: String(timestamp) }, artist: { '#text': 'A' }, name: 'Song', album: { '#text': '' } },
         { date: { uts: String(timestamp) }, artist: { '#text': 'A' }, name: 'Song', album: { '#text': '' } }
       ]
@@ -23,6 +24,7 @@ test('bootstrap creates upload-compatible normalized state', async () => {
   });
   assert.equal(state.scrobbles.length, 1);
   assert.equal(state.listeningStatus.kind, 'last-played');
+  assert.equal(state.listeningStatus.track, 'Song');
   assert.equal(stateKey('Listener'), 'lastfm-user-v1:listener');
   assert.equal('apiKey' in state, false);
 });

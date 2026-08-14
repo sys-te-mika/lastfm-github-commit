@@ -50,7 +50,8 @@ test('Worker updates KV once and serves a no-cache SVG', async () => {
   const result = await updateGraph(env, { now, fetchImpl, sleep: async () => {} });
   assert.equal(result.recentScrobbles.length, 1);
   assert.equal(Object.values(result.countsByDate).reduce((sum, count) => sum + count, 0), 1);
-  assert.equal(result.listeningStatus.kind, 'now-playing');
+  assert.equal(result.listeningStatus.kind, 'last-played');
+  assert.equal(result.listeningStatus.track, 'Song');
   const repeated = await updateGraph(env, { now: new Date(now.getTime() + 60_000), fetchImpl, sleep: async () => {} });
   assert.equal(Object.values(repeated.countsByDate).reduce((sum, count) => sum + count, 0), 1, 'overlap does not double-count a scrobble');
   const response = await worker.fetch(new Request('https://example.com/graph.svg'), env);
@@ -58,7 +59,8 @@ test('Worker updates KV once and serves a no-cache SVG', async () => {
   assert.match(response.headers.get('cache-control'), /no-cache/);
   assert.match(response.headers.get('content-security-policy'), /img-src data:/);
   const svg = await response.text();
-  assert.match(svg, /Artist &amp; Co — Live &lt;Song&gt;/);
+  assert.match(svg, /Last played 1 minute ago: Artist — Song/);
+  assert.match(svg, /<desc id="desc">[^<]*Last played 1 minute ago: Artist — Song\.<\/desc>/);
   assert.match(svg, />Listener</);
   assert.match(svg, /data:image\/png;base64,AQID/);
   assert.equal(env.LASTFM_STATE.writes, 2, 'each refresh writes only the lightweight graph state');

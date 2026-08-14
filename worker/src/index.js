@@ -52,9 +52,9 @@ export async function updateGraph(env, options = {}) {
   for (const day of Object.keys(countsByDate)) if (day < cutoffDate) delete countsByDate[day];
   const recentScrobbles = deduplicate([...cachedRecent, ...recent.scrobbles])
     .filter((item) => item.timestamp >= nowSeconds - RECENT_WINDOW_SECONDS);
-  const listeningStatus = recent.nowPlaying
-    ? { ...recent.nowPlaying, kind: 'now-playing' }
-    : recentScrobbles.length ? { ...recentScrobbles.at(-1), kind: 'last-played' } : existing.listeningStatus ?? null;
+  const listeningStatus = recentScrobbles.length
+    ? { ...recentScrobbles.at(-1), kind: 'last-played' }
+    : existing.listeningStatus?.kind === 'last-played' ? existing.listeningStatus : null;
   const state = {
     version: 1, username, timeZone, countsByDate, recentScrobbles,
     listeningStatus, profile: existing.profile ?? null,
@@ -112,7 +112,8 @@ export default {
           username: state.username || username,
           endDate: localDateKey(now, timeZone),
           listeningStatus: state.listeningStatus,
-          profile: state.profile
+          profile: state.profile,
+          renderedAt: now.getTime()
         });
         return svgResponse(svg);
       } catch (error) {
