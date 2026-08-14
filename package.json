@@ -1,0 +1,20 @@
+{
+  "name": "lastfm-github-commit",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "bootstrap": "node scripts/bootstrap.js",
+    "snapshot-assets": "node scripts/snapshot-assets.js",
+    "test": "node --test",
+    "check": "node --check scripts/bootstrap.js && node --check scripts/snapshot-assets.js && node --check src/lastfm.js && node --check src/lib.js && node --check src/state.js && node --check worker/src/index.js && node --test",
+    "worker:dev": "wrangler dev --test-scheduled",
+    "worker:deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "4.123.0"
+  }
+}

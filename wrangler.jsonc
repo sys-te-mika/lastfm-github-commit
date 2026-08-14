@@ -1,0 +1,29 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "lastfm-github-commit",
+	"main": "worker/src/index.js",
+	"compatibility_date": "2026-08-14",
+	"compatibility_flags": ["nodejs_compat"],
+	"observability": {
+		"enabled": true,
+		"logs": { "head_sampling_rate": 1 }
+	},
+	"workers_dev": true,
+	"triggers": {
+		"crons": [
+			"1-59/4 * * * *"
+		]
+	},
+	"kv_namespaces": [
+		{
+			"binding": "LASTFM_STATE",
+			"id": "REPLACE_WITH_YOUR_KV_NAMESPACE_ID",
+			"remote": true
+		}
+	],
+	"vars": {
+		"LASTFM_USERNAME": "your-lastfm-username",
+		"TIMEZONE": "UTC",
+		"GRAPH_THEME": "github-dark"
+	}
+}
