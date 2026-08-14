@@ -7,6 +7,7 @@ import { fetchAvatarDataUri, fetchScrobbles, fetchUserProfile } from '../src/las
 import { graphStateKey, stateKey, validateUsername } from '../src/state.js';
 
 const RETENTION_DAYS = 370;
+const RECENT_WINDOW_SECONDS = 600;
 const OUTPUT_PATH = resolve('.wrangler/bootstrap-state.json');
 const GRAPH_OUTPUT_PATH = resolve('.wrangler/bootstrap-graph-state.json');
 
@@ -66,6 +67,7 @@ async function main() {
   const graphState = {
     version: 1, username: state.username, timeZone,
     countsByDate: dailyCounts(state.scrobbles, timeZone),
+    recentScrobbles: state.scrobbles.filter((item) => item.timestamp >= Math.floor(state.updatedAt / 1000) - RECENT_WINDOW_SECONDS),
     listeningStatus: state.listeningStatus, profile: state.profile, updatedAt: state.updatedAt
   };
   const graphTemporary = `${GRAPH_OUTPUT_PATH}.${process.pid}.tmp`;

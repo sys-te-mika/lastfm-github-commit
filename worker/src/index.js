@@ -1,10 +1,10 @@
-import { DAY_MS, dailyCounts, deduplicate, renderSvg, THEMES, validateTimeZone } from '../../src/lib.js';
-import { fetchAvatarDataUri, fetchScrobbles, fetchUserProfile } from '../../src/lastfm.js';
-import { graphStateKey, stateKey, validateUsername } from '../../src/state.js';
+import { DAY_MS, dateKey, deduplicate, renderSvg, THEMES, validateTimeZone } from '../../src/lib.js';
+import { fetchScrobbles } from '../../src/lastfm.js';
+import { graphStateKey, validateUsername } from '../../src/state.js';
 
 const OVERLAP_SECONDS = 300;
 const RETENTION_DAYS = 370;
-const PROFILE_MAX_AGE_MS = DAY_MS;
+const RECENT_WINDOW_SECONDS = OVERLAP_SECONDS * 2;
 
 function required(env, name) {
   const value = env[name]?.trim();
@@ -24,54 +24,52 @@ export async function updateGraph(env, options = {}) {
   const username = validateUsername(options.username ?? required(env, 'LASTFM_USERNAME'));
   const apiKey = required(env, 'LASTFM_API_KEY');
   const now = options.now ?? new Date();
-  const key = stateKey(username);
+  const key = graphStateKey(username);
   const existing = await env.LASTFM_STATE.get(key, 'json');
-  if (!existing?.updatedAt || !Array.isArray(existing.scrobbles)) {
+  if (!existing?.updatedAt || !existing.countsByDate) {
     throw new Error('Graph cache is not initialized. Run and upload the local bootstrap first.');
   }
-  const cached = Array.isArray(existing?.scrobbles) ? existing.scrobbles : [];
-  const cutoff = Math.floor((now.getTime() - RETENTION_DAYS * DAY_MS) / 1000);
-  const latest = cached.at(-1)?.timestamp;
+  const timeZone = validateTimeZone(env.TIMEZONE?.trim() || 'UTC');
+  const cachedRecent = Array.isArray(existing.recentScrobbles) ? existing.recentScrobbles : [];
   const nowSeconds = Math.floor(now.getTime() / 1000);
-  const from = Math.max(cutoff, latest ? latest - OVERLAP_SECONDS : nowSeconds - OVERLAP_SECONDS);
+  const latest = cachedRecent.at(-1)?.timestamp;
+  const from = latest
+    ? latest - OVERLAP_SECONDS
+    : Math.min(nowSeconds, Math.floor(existing.updatedAt / 1000) + 1);
   const recent = await fetchScrobbles({
     apiKey, username, from, to: nowSeconds, maxPages: 10,
     fetchImpl: options.fetchImpl ?? fetch,
     sleep: options.sleep
   });
-  const scrobbles = deduplicate([...cached, ...recent.scrobbles])
-    .filter((item) => item.timestamp >= cutoff);
-  let profile = existing?.profile ?? null;
-  if (!profile?.fetchedAt || now.getTime() - profile.fetchedAt >= PROFILE_MAX_AGE_MS) {
-    try {
-      const userProfile = await fetchUserProfile({ apiKey, username, fetchImpl: options.fetchImpl ?? fetch, sleep: options.sleep });
-      profile = {
-        username: userProfile.username,
-        avatarDataUri: await fetchAvatarDataUri(userProfile.imageUrl, options.fetchImpl ?? fetch),
-        fetchedAt: now.getTime()
-      };
-    } catch {
-      // Profile decoration is optional; retain an older successful image if available.
-    }
+  const known = new Set(cachedRecent.map(scrobbleKey));
+  const additions = recent.scrobbles.filter((item) => !known.has(scrobbleKey(item)));
+  const countsByDate = { ...existing.countsByDate };
+  for (const item of additions) {
+    const day = dateKey(item.timestamp, timeZone);
+    countsByDate[day] = (countsByDate[day] ?? 0) + 1;
   }
+  const cutoffDate = localDateKey(new Date(now.getTime() - RETENTION_DAYS * DAY_MS), timeZone);
+  for (const day of Object.keys(countsByDate)) if (day < cutoffDate) delete countsByDate[day];
+  const recentScrobbles = deduplicate([...cachedRecent, ...recent.scrobbles])
+    .filter((item) => item.timestamp >= nowSeconds - RECENT_WINDOW_SECONDS);
   const listeningStatus = recent.nowPlaying
     ? { ...recent.nowPlaying, kind: 'now-playing' }
-    : scrobbles.length ? { ...scrobbles.at(-1), kind: 'last-played' } : null;
+    : recentScrobbles.length ? { ...recentScrobbles.at(-1), kind: 'last-played' } : existing.listeningStatus ?? null;
   const state = {
-    version: 1, username, scrobbles, listeningStatus, profile,
+    version: 1, username, timeZone, countsByDate, recentScrobbles,
+    listeningStatus, profile: existing.profile ?? null,
     updatedAt: now.getTime()
   };
   await env.LASTFM_STATE.put(key, JSON.stringify(state));
-  const timeZone = validateTimeZone(env.TIMEZONE?.trim() || 'UTC');
-  await env.LASTFM_STATE.put(graphStateKey(username), JSON.stringify({
-    version: 1, username, timeZone, countsByDate: dailyCounts(scrobbles, timeZone),
-    listeningStatus, profile, updatedAt: now.getTime()
-  }));
   console.log(JSON.stringify({
     message: 'Last.fm cache updated',
-    scrobbles: scrobbles.length
+    newScrobbles: additions.length
   }));
   return state;
+}
+
+function scrobbleKey(item) {
+  return [item.timestamp, item.artist, item.track, item.album ?? ''].join('\u0000');
 }
 
 function svgResponse(svg) {
