@@ -37,6 +37,29 @@ test('retries transient errors with exponential backoff', async () => {
   assert.equal(result.nowPlaying, null);
 });
 
+test('normalizes single-track and empty recent-track responses', async () => {
+  const single = await fetchScrobbles({
+    apiKey: 'secret', username: 'user', from: 1, to: 200, sleep: async () => {},
+    fetchImpl: async () => ({
+      ok: true, status: 200,
+      json: async () => ({ recenttracks: {
+        '@attr': { totalPages: '1', total: '1' },
+        track: { date: { uts: '100' }, name: 'Song', artist: { '#text': 'Artist' } }
+      } })
+    })
+  });
+  assert.equal(single.scrobbles.length, 1);
+
+  const empty = await fetchScrobbles({
+    apiKey: 'secret', username: 'user', from: 1, to: 200, sleep: async () => {},
+    fetchImpl: async () => ({
+      ok: true, status: 200,
+      json: async () => ({ recenttracks: { '@attr': { totalPages: '1', total: '0' } } })
+    })
+  });
+  assert.deepEqual(empty.scrobbles, []);
+});
+
 test('respects a page ceiling and reports an incomplete range', async () => {
   let calls = 0;
   const result = await fetchScrobbles({

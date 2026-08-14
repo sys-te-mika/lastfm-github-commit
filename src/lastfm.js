@@ -6,6 +6,14 @@ function value(field) {
   return typeof field === 'string' ? field : field?.['#text'];
 }
 
+function normalizeTracks(recentTracks) {
+  if (!recentTracks || typeof recentTracks !== 'object') return null;
+  if (Array.isArray(recentTracks.track)) return recentTracks.track;
+  if (recentTracks.track && typeof recentTracks.track === 'object') return [recentTracks.track];
+  if (recentTracks.track == null && Number(recentTracks['@attr']?.total) === 0) return [];
+  return null;
+}
+
 async function requestPage({ apiKey, username, from, to, page, fetchImpl, sleep }) {
   const body = new URLSearchParams({
     method: 'user.getRecentTracks', user: username, api_key: apiKey,
@@ -25,8 +33,15 @@ async function requestPage({ apiKey, username, from, to, page, fetchImpl, sleep 
         error.retryable = retryable;
         throw error;
       }
-      if (!data?.recenttracks || !Array.isArray(data.recenttracks.track)) throw Object.assign(new Error('Last.fm returned a malformed recent-tracks response.'), { retryable: true });
-      return data.recenttracks;
+      const tracks = normalizeTracks(data?.recenttracks);
+      if (!tracks) {
+        const trackType = Array.isArray(data?.recenttracks?.track) ? 'array' : typeof data?.recenttracks?.track;
+        const fields = data?.recenttracks && typeof data.recenttracks === 'object'
+          ? Object.keys(data.recenttracks).sort().join(',')
+          : 'none';
+        throw Object.assign(new Error(`Last.fm returned a malformed recent-tracks response (track=${trackType}; fields=${fields}).`), { retryable: true });
+      }
+      return { ...data.recenttracks, track: tracks };
     } catch (error) {
       if (attempt === RETRIES - 1 || error.retryable === false || (error.message.startsWith('Last.fm request failed with HTTP') && !error.retryable)) throw error;
       await sleep(1000 * (2 ** attempt));
