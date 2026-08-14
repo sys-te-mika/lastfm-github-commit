@@ -50,7 +50,10 @@ test('SVG generation is deterministic and escapes external text', () => {
   assert.equal(first, renderSvg(options));
   assert.match(first, /&lt;listener &amp; friends&gt;/);
   assert.doesNotMatch(first, /<listener/);
-  assert.match(first, /1 scrobbles/);
+  assert.match(first, /1 Last\.fm scrobble by/);
+  assert.match(first, /1 scrobble on 2025-02-03/);
+  assert.match(first, />1 scrobble<\/text>/);
+  assert.doesNotMatch(first, /1 scrobbles/);
   assert.match(first, /Last played 2 minutes ago: A&amp;B — &lt;Song&gt;/);
   assert.match(first, /<desc id="desc">[^<]*Last played 2 minutes ago: A&amp;B — &lt;Song&gt;\.<\/desc>/);
   assert.match(first, /&lt;Profile &amp; Name&gt;/);

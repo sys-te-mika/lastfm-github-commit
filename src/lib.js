@@ -76,6 +76,10 @@ function addDays(date, days) {
   return new Date(date.getTime() + days * DAY_MS);
 }
 
+function scrobbleNoun(count) {
+  return count === 1 ? 'scrobble' : 'scrobbles';
+}
+
 export const THEMES = {
   'github-light': {
     background: '#ffffff', text: '#1f2328', levels: ['#ebedf0', '#ffd6d9', '#ff8a91', '#e8343f', '#b90000']
@@ -125,7 +129,7 @@ export function renderSvg({ scrobbles = [], countsByDate = null, timeZone, theme
   const cell = 11, gap = 3, left = 34, top = 66;
   const width = left + columns * (cell + gap) + 8;
   const height = top + 7 * (cell + gap) + 53;
-  const title = `${total} Last.fm scrobbles by ${username} in the trailing 365 days`;
+  const title = `${total} Last.fm ${scrobbleNoun(total)} by ${username} in the trailing 365 days`;
   const status = listeningStatus?.kind === 'last-played' && Number.isSafeInteger(listeningStatus.timestamp)
     ? `Last played ${formatTimeAgo(listeningStatus.timestamp, renderedAt)}: ${listeningStatus.artist} — ${listeningStatus.track}`
     : 'No recent track available';
@@ -157,7 +161,7 @@ export function renderSvg({ scrobbles = [], countsByDate = null, timeZone, theme
       const count = counts.get(key) ?? 0;
       const level = intensityLevel(count, thresholds);
       const x = left + column * (cell + gap), y = top + row * (cell + gap);
-      lines.push(`    <rect x="${x}" y="${y}" width="${cell}" height="${cell}" rx="2" fill="${theme.levels[level]}" data-date="${key}" data-count="${count}"><title>${count} scrobbles on ${key}</title></rect>`);
+      lines.push(`    <rect x="${x}" y="${y}" width="${cell}" height="${cell}" rx="2" fill="${theme.levels[level]}" data-date="${key}" data-count="${count}"><title>${count} ${scrobbleNoun(count)} on ${key}</title></rect>`);
     }
     const month = week.getUTCMonth();
     if (month !== lastMonth && addDays(week, 6) >= start && week <= end) {
@@ -167,7 +171,7 @@ export function renderSvg({ scrobbles = [], countsByDate = null, timeZone, theme
     }
   }
   lines.push(`    <text x="${left}" y="${height - 28}" font-size="12">${escapeXml(status)}</text>`);
-  lines.push(`    <text x="${left}" y="${height - 9}" font-size="12">${total} scrobbles</text>`);
+  lines.push(`    <text x="${left}" y="${height - 9}" font-size="12">${total} ${scrobbleNoun(total)}</text>`);
   const legendX = width - 143;
   lines.push(`    <text x="${legendX}" y="${height - 9}">Less</text>`);
   for (let level = 0; level < theme.levels.length; level++) {
