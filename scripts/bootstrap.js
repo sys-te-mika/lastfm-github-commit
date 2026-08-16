@@ -49,7 +49,9 @@ export async function buildBootstrapState({ apiKey, username, now = new Date(), 
     version: 1,
     username,
     scrobbles,
-    listeningStatus: scrobbles.length ? { ...scrobbles.at(-1), kind: 'last-played' } : null,
+    listeningStatus: recent.nowPlaying
+      ? { ...recent.nowPlaying, kind: 'now-playing' }
+      : scrobbles.length ? { ...scrobbles.at(-1), kind: 'last-played' } : null,
     profile,
     updatedAt: now.getTime()
   };
