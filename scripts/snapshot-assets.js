@@ -29,7 +29,8 @@ const common = {
   username: state.username,
   endDate: localDateKey(state.updatedAt, state.timeZone),
   listeningStatus: state.listeningStatus,
-  profile: state.profile
+  profile: state.profile,
+  renderedAt: state.updatedAt
 };
 
 for (const themeName of Object.keys(THEMES)) {

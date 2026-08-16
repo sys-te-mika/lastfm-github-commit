@@ -55,12 +55,29 @@ export function intensityLevel(count, thresholds) {
   return 4;
 }
 
+export function formatTimeAgo(timestampSeconds, nowMilliseconds) {
+  const elapsedSeconds = Math.max(0, Math.floor(nowMilliseconds / 1000) - timestampSeconds);
+  if (elapsedSeconds < 60) return 'just now';
+  const units = [
+    ['day', 86_400],
+    ['hour', 3_600],
+    ['minute', 60]
+  ];
+  const [unit, seconds] = units.find(([, size]) => elapsedSeconds >= size);
+  const count = Math.floor(elapsedSeconds / seconds);
+  return `${count} ${unit}${count === 1 ? '' : 's'} ago`;
+}
+
 function isoDate(date) {
   return date.toISOString().slice(0, 10);
 }
 
 function addDays(date, days) {
   return new Date(date.getTime() + days * DAY_MS);
+}
+
+function scrobbleNoun(count) {
+  return count === 1 ? 'scrobble' : 'scrobbles';
 }
 
 export const THEMES = {
@@ -94,7 +111,7 @@ export function dailyCounts(scrobbles, timeZone) {
   return counts;
 }
 
-export function renderSvg({ scrobbles = [], countsByDate = null, timeZone, themeName, username, endDate, listeningStatus = null, profile = null }) {
+export function renderSvg({ scrobbles = [], countsByDate = null, timeZone, themeName, username, endDate, listeningStatus = null, profile = null, renderedAt = Date.now() }) {
   const theme = THEMES[themeName];
   if (!theme) throw new Error(`Unknown graph theme: ${themeName}. Use ${Object.keys(THEMES).join(' or ')}.`);
   validateTimeZone(timeZone);
@@ -112,11 +129,15 @@ export function renderSvg({ scrobbles = [], countsByDate = null, timeZone, theme
   const cell = 11, gap = 3, left = 34, top = 66;
   const width = left + columns * (cell + gap) + 8;
   const height = top + 7 * (cell + gap) + 53;
-  const title = `${total} Last.fm scrobbles by ${username} in the trailing 365 days`;
+  const title = `${total} Last.fm ${scrobbleNoun(total)} by ${username} in the trailing 365 days`;
+  const status = listeningStatus?.kind === 'last-played' && Number.isSafeInteger(listeningStatus.timestamp)
+    ? `Last played ${formatTimeAgo(listeningStatus.timestamp, renderedAt)}: ${listeningStatus.artist} — ${listeningStatus.track}`
+    : 'No recent track available';
+  const description = `Calendar graph from ${isoDate(start)} through ${isoDate(end)} in ${timeZone}. Darker cells represent more scrobbles. ${status}.`;
   const lines = [
     `<svg xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`,
     `  <title id="title">${escapeXml(title)}</title>`,
-    `  <desc id="desc">${escapeXml(`Calendar graph from ${isoDate(start)} through ${isoDate(end)} in ${timeZone}. Darker cells represent more scrobbles.`)}</desc>`,
+    `  <desc id="desc">${escapeXml(description)}</desc>`,
     `  <rect width="100%" height="100%" rx="6" fill="${theme.background}"/>`,
     '  <defs><clipPath id="avatar-clip"><circle cx="25" cy="25" r="17"/></clipPath></defs>',
     `  <g font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif" font-size="10" fill="${theme.text}">`
@@ -140,7 +161,7 @@ export function renderSvg({ scrobbles = [], countsByDate = null, timeZone, theme
       const count = counts.get(key) ?? 0;
       const level = intensityLevel(count, thresholds);
       const x = left + column * (cell + gap), y = top + row * (cell + gap);
-      lines.push(`    <rect x="${x}" y="${y}" width="${cell}" height="${cell}" rx="2" fill="${theme.levels[level]}" data-date="${key}" data-count="${count}"><title>${count} scrobbles on ${key}</title></rect>`);
+      lines.push(`    <rect x="${x}" y="${y}" width="${cell}" height="${cell}" rx="2" fill="${theme.levels[level]}" data-date="${key}" data-count="${count}"><title>${count} ${scrobbleNoun(count)} on ${key}</title></rect>`);
     }
     const month = week.getUTCMonth();
     if (month !== lastMonth && addDays(week, 6) >= start && week <= end) {
@@ -149,14 +170,8 @@ export function renderSvg({ scrobbles = [], countsByDate = null, timeZone, theme
       lastMonth = month;
     }
   }
-  if (listeningStatus) {
-    const prefix = listeningStatus.kind === 'now-playing' ? 'Now playing at last update' : 'Last played';
-    const status = `${prefix}: ${listeningStatus.artist} — ${listeningStatus.track}`;
-    lines.push(`    <text x="${left}" y="${height - 28}" font-size="12">${escapeXml(status)}</text>`);
-  } else {
-    lines.push(`    <text x="${left}" y="${height - 28}" font-size="12">No recent track available</text>`);
-  }
-  lines.push(`    <text x="${left}" y="${height - 9}" font-size="12">${total} scrobbles</text>`);
+  lines.push(`    <text x="${left}" y="${height - 28}" font-size="12">${escapeXml(status)}</text>`);
+  lines.push(`    <text x="${left}" y="${height - 9}" font-size="12">${total} ${scrobbleNoun(total)}</text>`);
   const legendX = width - 143;
   lines.push(`    <text x="${legendX}" y="${height - 9}">Less</text>`);
   for (let level = 0; level < theme.levels.length; level++) {

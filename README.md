@@ -4,7 +4,7 @@
 
 A single-user Cloudflare Worker that turns the trailing 365 days of one Last.fm account's listening activity into a GitHub-style SVG contribution graph. A one-time local bootstrap indexes the history; afterward, a four-minute scheduled job only fetches new scrobbles. Graph requests read a lightweight daily-total cache and render quickly.
 
-The graph includes a seven-row calendar, five red activity intensities, labels, total scrobbles, the Last.fm profile picture and username, and the current or latest track. The example assets use [`shinohanamori`](https://www.last.fm/user/shinohanamori) as the sample username and contain no credentials or live private cache.
+The graph includes a seven-row calendar, five red activity intensities, labels, total scrobbles, the Last.fm profile picture and username, and when the latest completed track was played. The example assets use [`shinohanamori`](https://www.last.fm/user/shinohanamori) as the sample username and contain no credentials or live private cache.
 
 ## Use the graph
 
