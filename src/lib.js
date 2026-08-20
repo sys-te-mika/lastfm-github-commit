@@ -130,9 +130,11 @@ export function renderSvg({ scrobbles = [], countsByDate = null, timeZone, theme
   const width = left + columns * (cell + gap) + 8;
   const height = top + 7 * (cell + gap) + 53;
   const title = `${total} Last.fm ${scrobbleNoun(total)} by ${username} in the trailing 365 days`;
-  const status = listeningStatus?.kind === 'last-played' && Number.isSafeInteger(listeningStatus.timestamp)
-    ? `Last played ${formatTimeAgo(listeningStatus.timestamp, renderedAt)}: ${listeningStatus.artist} — ${listeningStatus.track}`
-    : 'No recent track available';
+  const status = listeningStatus?.kind === 'now-playing'
+    ? `Currently playing ${listeningStatus.artist} — ${listeningStatus.track}`
+    : listeningStatus?.kind === 'last-played' && Number.isSafeInteger(listeningStatus.timestamp)
+      ? `Last played ${listeningStatus.artist} — ${listeningStatus.track} ${formatTimeAgo(listeningStatus.timestamp, renderedAt)}`
+      : 'No recent track available';
   const description = `Calendar graph from ${isoDate(start)} through ${isoDate(end)} in ${timeZone}. Darker cells represent more scrobbles. ${status}.`;
   const lines = [
     `<svg xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`,

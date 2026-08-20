@@ -23,8 +23,8 @@ test('bootstrap creates upload-compatible normalized state', async () => {
     fetchImpl, sleep: async () => {}
   });
   assert.equal(state.scrobbles.length, 1);
-  assert.equal(state.listeningStatus.kind, 'last-played');
-  assert.equal(state.listeningStatus.track, 'Song');
+  assert.equal(state.listeningStatus.kind, 'now-playing');
+  assert.equal(state.listeningStatus.track, 'Playing');
   assert.equal(stateKey('Listener'), 'lastfm-user-v1:listener');
   assert.equal('apiKey' in state, false);
 });
